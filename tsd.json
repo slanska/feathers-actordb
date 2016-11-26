@@ -1,0 +1,36 @@
+{
+  "version": "v4",
+  "repo": "borisyankov/DefinitelyTyped",
+  "ref": "master",
+  "path": "typings",
+  "bundle": "typings/tsd.d.ts",
+  "installed": {
+    "node/node.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "knex/knex.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "bluebird/bluebird-2.0.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "lodash/lodash.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "chai/chai.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "assertion-error/assertion-error.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "mocha/mocha.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "faker/faker.d.ts": {
+      "commit": "40369139ce3199a94fb7a89233ed31c5fe07c567"
+    },
+    "es6-promise/es6-promise.d.ts": {
+      "commit": "e4717461e4c3ce9e71f517074108f089604a2503"
+    }
+  }
+}
