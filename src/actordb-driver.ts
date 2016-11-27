@@ -6,7 +6,6 @@
 
 // import Proto from 'uberproto';
 var filter = require('feathers-query-filters').filter;
-// import isPlainObject from 'is-plain-object';
 import errorHandler from './error-handler';
 var errors = require('feathers-errors').errors;
 import _  = require ('lodash');
@@ -17,9 +16,7 @@ const METHODS = {
     $or: 'orWhere',
     $ne: 'whereNot',
     $in: 'whereIn',
-    $nin: 'whereNotIn',
-    $match: 'match', // TODO
-    $like: 'like' // TODO
+    $nin: 'whereNotIn'
 };
 
 const OPERATORS = {
@@ -27,41 +24,48 @@ const OPERATORS = {
     $lte: '<=',
     $gt: '>',
     $gte: '>=',
-    $like: 'like'
+    $like: 'like',
+    $match: 'match', // TODO
 };
+
+interface ActorDBServiceOptions
+{
+    client: ActorDB.ActorDBPool;
+    tableName: string; // Table name
+    paginate?: {limit?: number, offset?: number};
+    id?: string;
+    events?: any; // TODO ???
+}
 
 // Create the service.
 class Service
 {
-    actorDB: any;
     knex: knex;
     id: string;
     paginate: any;
     table: string;
     events: any;
 
-    constructor(options:ActorDB.)
+    constructor(private options: ActorDBServiceOptions)
     {
         if (!options)
         {
-            throw new Error('Knex options have to be provided');
+            throw new Error('ActorDB options have to be provided');
         }
 
-        if (!options.Model)
+        if (!options.client)
         {
-            throw new Error('You must provide a Model (the initialized knex object)');
+            throw new Error('You must provide a client');
         }
 
-        if (typeof options.name !== 'string')
+        if (typeof options.tableName !== 'string')
         {
             throw new Error('No table name specified.');
         }
 
-        this.knex = options.Model;
         this.id = options.id || 'id';
         this.paginate = options.paginate || {};
-        this.table = options.name;
-        this.events = options.events || [];
+        // this.events = options.events || [];
     }
 
     // NOTE (EK): We need this method so that we return a new query
@@ -115,7 +119,7 @@ class Service
         });
     }
 
-    _find(params, count?, getFilter = filter)
+    private _find(params, count?, getFilter = filter)
     {
         const {filters, query} = getFilter(params.query || {});
         let q = this.db().select(['*']);
@@ -201,8 +205,8 @@ class Service
         return result;
     }
 
-    _get(...args);
-    _get(id, params)
+    private _get(...args);
+    private _get(id, params)
     {
         const query = _.assign({}, params.query);
 
@@ -225,13 +229,15 @@ class Service
         return this._get(...args);
     }
 
-    _create(data, params)
+    private _create(data, params)
     {
-        return this.db().insert(data, this.id).then(rows =>
-        {
-            const id = typeof data[this.id] !== 'undefined' ? data[this.id] : rows[0];
-            return this._get(id, params);
-        }).catch(errorHandler);
+        return this.db().insert(data, this.id)
+            .then(rows =>
+            {
+                const id = typeof data[this.id] !== 'undefined' ? data[this.id] : rows[0];
+                return this._get(id, params);
+            })
+            .catch(errorHandler);
     }
 
     create(data, params)
@@ -267,40 +273,42 @@ class Service
 
         delete data[this.id];
 
-        return ids.then(idList =>
-        {
-            // Create a new query that re-queries all ids that
-            // were originally changed
-
-            const findParams = _.assign({}, params, {
-                query: {
-                    [this.id]: {$in: idList},
-                    $select: params.query && params.query.$select
-                }
-            });
-
-            return q.update(data).then(() =>
+        return ids
+            .then(idList =>
             {
-                return this._find(findParams).then(page =>
-                {
-                    const items = page.data;
+                // Create a new query that re-queries all ids that
+                // were originally changed
 
-                    if (id !== null)
-                    {
-                        if (items.length === 1)
-                        {
-                            return items[0];
-                        }
-                        else
-                        {
-                            throw new errors.NotFound(`No record found for id '${id}'`);
-                        }
+                const findParams = _.assign({}, params, {
+                    query: {
+                        [this.id]: {$in: idList},
+                        $select: params.query && params.query.$select
                     }
-
-                    return items;
                 });
-            });
-        }).catch(errorHandler);
+
+                return q.update(data)
+                    .then(() =>
+                    {
+                        return this._find(findParams).then(page =>
+                        {
+                            const items = page.data;
+
+                            if (id !== null)
+                            {
+                                if (items.length === 1)
+                                {
+                                    return items[0];
+                                }
+                                else
+                                {
+                                    throw new errors.NotFound(`No record found for id '${id}'`);
+                                }
+                            }
+
+                            return items;
+                        });
+                    });
+            }).catch(errorHandler);
     }
 
     update(id, data, params)
@@ -313,32 +321,37 @@ class Service
         // NOTE (EK): First fetch the old record so
         // that we can fill any existing keys that the
         // client isn't updating with null;
-        return this._get(id, params).then(oldData =>
-        {
-            let newObject = {};
-
-            for (var key of Object.keys(oldData))
+        return this._get(id, params)
+            .then(oldData =>
             {
-                if (data[key] === undefined)
-                {
-                    newObject[key] = null;
-                }
-                else
-                {
-                    newObject[key] = data[key];
-                }
-            }
+                let newObject = {};
 
-            // NOTE (EK): Delete id field so we don't update it
-            delete newObject[this.id];
+                for (var key of Object.keys(oldData))
+                {
+                    if (data[key] === undefined)
+                    {
+                        newObject[key] = null;
+                    }
+                    else
+                    {
+                        newObject[key] = data[key];
+                    }
+                }
 
-            return this.db().where(this.id, id).update(newObject).then(() =>
-            {
-                // NOTE (EK): Restore the id field so we can return it to the client
-                newObject[this.id] = id;
-                return newObject;
-            });
-        }).catch(errorHandler);
+                // NOTE (EK): Delete id field so we don't update it
+                delete newObject[this.id];
+
+                return this.db()
+                    .where(this.id, id)
+                    .update(newObject)
+                    .then(() =>
+                    {
+                        // NOTE (EK): Restore the id field so we can return it to the client
+                        newObject[this.id] = id;
+                        return newObject;
+                    });
+            })
+            .catch(errorHandler);
     }
 
     remove(id, params)
@@ -352,30 +365,33 @@ class Service
             params.query[this.id] = id;
         }
 
-        return this._find(params).then(page =>
-        {
-            const items = page.data;
-            const query = this.db();
-
-            this.knexify(query, params.query);
-
-            return query.del().then(() =>
+        return this._find(params)
+            .then(page =>
             {
-                if (id !== null)
-                {
-                    if (items.length === 1)
-                    {
-                        return items[0];
-                    }
-                    else
-                    {
-                        throw new errors.NotFound(`No record found for id '${id}'`);
-                    }
-                }
+                const items = page.data;
+                const query = this.db();
 
-                return items;
-            });
-        }).catch(errorHandler);
+                this.knexify(query, params.query);
+
+                return query.del()
+                    .then(() =>
+                    {
+                        if (id !== null)
+                        {
+                            if (items.length === 1)
+                            {
+                                return items[0];
+                            }
+                            else
+                            {
+                                throw new errors.NotFound(`No record found for id '${id}'`);
+                            }
+                        }
+
+                        return items;
+                    });
+            })
+            .catch(errorHandler);
     }
 }
 

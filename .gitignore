@@ -5,3 +5,5 @@
 /src/actordb-driver.js
 /src/error-handler.js
 /src/actordb-driver.js.map
+/test/connection.js
+/test/connection.js.map

@@ -2,9 +2,8 @@
  * Created by slanska on 2016-11-25.
  */
 
-/// <reference path="es6-promise/es6-promise.d.ts" />
+/// <reference path="bluebird/bluebird-2.0.d.ts" />
 ///<reference path="./node/node.d.ts"/>
-
 
 declare module "actordb"
 {
@@ -23,6 +22,12 @@ declare module "actordb"
         export interface ConnectionPoolOptions
         {
             pool_size: number
+        }
+
+        export interface ExecResult
+        {
+            columns: string[];
+            rows: any[];
         }
 
         export class ActorDBClient extends events.EventEmitter
@@ -49,22 +54,23 @@ declare module "actordb"
             /*
 
              */
-            exec_single_param(myUserId: string, actorType: string, sql: string, options: string[], params: [any[]]): Promise<any>;
+            exec_single_param(myUserId: string, actorType: string, sql: string,
+                              options: string[], params: [any[]]): Promise<ExecResult>;
 
             /*
 
              */
-            exec_single(myUserId: string, actorType: string, sql: string, options: string[]): Promise<any>;
+            exec_single(myUserId: string, actorType: string, sql: string, options: string[]): Promise<ExecResult>;
 
             /*
 
              */
-            uniqid(callback?: Function): Promise<string>;
+            uniqid(callback?: Function): Promise<Buffer>;
 
             /*
 
              */
-            salt(callback?: Function): Promise<string>;
+            salt(callback?: Function): Promise<Uint8Array>;
 
             /*
 
@@ -73,22 +79,22 @@ declare module "actordb"
 
             exec_sql(sql: string, result_callback?: Function): Promise<ActorDBClient>;
 
-            exec_sql_param(sql: string, bindingvals, result_callback?: Function): Promise<any>;
+            exec_sql_param(sql: string, bindingvals, result_callback?: Function): Promise<ExecResult>;
 
-            exec_config(sql_statement: string, result_callback?: Function): Promise<any>;
+            exec_config(sql_statement: string, result_callback?: Function): Promise<ExecResult>;
 
-            exec_schema(sql_statement: string, result_callback?: Function): Promise<any>;
+            exec_schema(sql_statement: string, result_callback?: Function): Promise<ExecResult>;
 
             exec_single(actorname: string, actortype: string, sql_statement: string, flags,
-                        result_callback?: Function): Promise<any>;
+                        result_callback?: Function): Promise<ExecResult>;
 
             exec_single_param(actorname: string, actortype: string, sql_statement: string, flags,
-                              bindingvals, result_callback?: Function): Promise<any>;
+                              bindingvals, result_callback?: Function): Promise<ExecResult>;
 
             exec_multi(actorname: string, actortype: string, sql_statement: string, flags,
-                       result_callback?: Function): Promise<any>;
+                       result_callback?: Function): Promise<ExecResult>;
 
-            exec_all(actortype: string, sql: string, flags, result_callback?: Function): Promise<any>;
+            exec_all(actortype: string, sql: string, flags, result_callback?: Function): Promise<ExecResult>;
 
             format_result(result);
 
@@ -99,7 +105,7 @@ declare module "actordb"
         {
             db(): ActorDBClient;
 
-            connect(callback?: Function): Promise<any>;
+            connect(callback?: Function): Promise<boolean>;
 
             close();
         }
@@ -113,8 +119,8 @@ declare module "actordb"
         /*
 
          */
-        export function connectPool(options: ConnectionOptions,
-                                    poolOptions: ConnectionPoolOptions): ActorDBPool;
+        export function connectionPool(connectionConfig: ConnectionOptions,
+                                       poolConfig: ConnectionPoolOptions): ActorDBPool;
 
     }
 
